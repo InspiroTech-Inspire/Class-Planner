@@ -342,6 +342,10 @@ input,select{ font-family: inherit; font-size: inherit; color: inherit; }
   margin-bottom: 30px;
 }
 
+.week.collapsed .week-body {
+  display: none;
+}
+
 .week-tab-row{
   display: flex;
   align-items: stretch;
@@ -391,6 +395,19 @@ input,select{ font-family: inherit; font-size: inherit; color: inherit; }
   padding: 2px;
 }
 .week-tab .del-week:hover{ opacity: 1; }
+
+.week-toggle {
+  background: none;
+  border: none;
+  color: #2A1B05;
+  opacity: .5;
+  cursor: pointer;
+  display: flex;
+  padding: 2px;
+  transition: transform .2s ease;
+}
+.week-toggle:hover { opacity: 1; }
+.week.collapsed .week-toggle { transform: rotate(-90deg); }
 
 .week-body{
   background: var(--paper-2);
@@ -442,6 +459,26 @@ input,select{ font-family: inherit; font-size: inherit; color: inherit; }
 }
 .entry-title::placeholder{ color: var(--ink-soft); opacity: .6; }
 
+.entry-grade-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  margin-right: 8px;
+}
+
+.entry-grade {
+  width: 60px;
+  padding: 4px 6px;
+  border: 1px solid var(--paper-3);
+  border-radius: var(--radius-sm);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--ink);
+}
+
 .del-entry{
   background: none;
   border: none;
@@ -461,7 +498,7 @@ input,select{ font-family: inherit; font-size: inherit; color: inherit; }
 
 .row{
   display: grid;
-  grid-template-columns: 40px 1fr 150px 160px;
+  grid-template-columns: 40px 1fr 150px 150px 160px;
   align-items: center;
   gap: 10px;
   padding: 9px 12px;
@@ -532,7 +569,7 @@ input,select{ font-family: inherit; font-size: inherit; color: inherit; }
 
 .row-head{
   display:grid;
-  grid-template-columns: 40px 1fr 150px 160px;
+  grid-template-columns: 40px 1fr 150px 150px 160px;
   gap: 10px;
   padding: 0 12px 6px;
   font-size: 10.5px;
@@ -633,11 +670,13 @@ input,select{ font-family: inherit; font-size: inherit; color: inherit; }
     grid-template-areas:
       "stamp label"
       "due due"
+      "submitted submitted"
       "status status";
   }
   .row .stamp{ grid-area: stamp; }
   .row .row-label{ grid-area: label; }
   .row .due-input{ grid-area: due; }
+  .row .submitted-input{ grid-area: submitted; }
   .row .status-select{ grid-area: status; }
 }
 

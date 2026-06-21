@@ -82,12 +82,12 @@ function nextWeekLabel(cls) {
 function makeRowsForType(type) {
   if (type === "discussion") {
     return [
-      { id: uid(), label: "Discussion Post", dueDate: "", status: "not-started" },
-      { id: uid(), label: "Reply 1", dueDate: "", status: "not-started" },
-      { id: uid(), label: "Reply 2", dueDate: "", status: "not-started" },
+      { id: uid(), label: "Discussion Post", dueDate: "", submittedDate: "", status: "not-started" },
+      { id: uid(), label: "Reply 1", dueDate: "", submittedDate: "", status: "not-started" },
+      { id: uid(), label: "Reply 2", dueDate: "", submittedDate: "", status: "not-started" },
     ];
   }
-  return [{ id: uid(), label: "Assignment", dueDate: "", status: "not-started" }];
+  return [{ id: uid(), label: "Assignment", dueDate: "", submittedDate: "", status: "not-started" }];
 }
 
 /* ---------- mutations ---------- */
@@ -121,7 +121,16 @@ function selectClass(classId) {
 function addWeek(classId) {
   const cls = findClass(classId);
   if (!cls) return;
-  cls.weeks.push({ id: uid(), label: nextWeekLabel(cls), entries: [] });
+  cls.weeks.push({ id: uid(), label: nextWeekLabel(cls), collapsed: false, entries: [] });
+  saveState();
+  render();
+}
+
+function toggleWeekCollapse(classId, weekId) {
+  const cls = findClass(classId);
+  const week = findWeek(cls, weekId);
+  if (!week) return;
+  week.collapsed = !week.collapsed;
   saveState();
   render();
 }
@@ -151,6 +160,7 @@ function addEntry(classId, weekId, type, title) {
     id: uid(),
     type,
     title: title.trim(),
+    grade: "",
     rows: makeRowsForType(type),
   });
   saveState();
@@ -175,6 +185,15 @@ function renameEntry(classId, weekId, entryId, title) {
   saveState();
 }
 
+function updateEntryGrade(classId, weekId, entryId, grade) {
+  const cls = findClass(classId);
+  const week = findWeek(cls, weekId);
+  const entry = findEntry(week, entryId);
+  if (!entry) return;
+  entry.grade = grade;
+  saveState();
+}
+
 function updateRowDueDate(classId, weekId, entryId, rowId, value) {
   const cls = findClass(classId);
   const week = findWeek(cls, weekId);
@@ -182,6 +201,16 @@ function updateRowDueDate(classId, weekId, entryId, rowId, value) {
   const row = entry.rows.find((r) => r.id === rowId);
   if (!row) return;
   row.dueDate = value;
+  saveState();
+}
+
+function updateRowSubmittedDate(classId, weekId, entryId, rowId, value) {
+  const cls = findClass(classId);
+  const week = findWeek(cls, weekId);
+  const entry = findEntry(week, entryId);
+  const row = entry.rows.find((r) => r.id === rowId);
+  if (!row) return;
+  row.submittedDate = value;
   saveState();
 }
 
@@ -269,6 +298,12 @@ function renderRow(cls, week, entry, row) {
   due.value = row.dueDate || "";
   due.addEventListener("change", (e) => updateRowDueDate(cls.id, week.id, entry.id, row.id, e.target.value));
 
+  const submitted = document.createElement("input");
+  submitted.type = "date";
+  submitted.className = "due-input submitted-input";
+  submitted.value = row.submittedDate || "";
+  submitted.addEventListener("change", (e) => updateRowSubmittedDate(cls.id, week.id, entry.id, row.id, e.target.value));
+
   const status = document.createElement("select");
   status.className = "status-select";
   status.setAttribute("data-status", row.status);
@@ -281,7 +316,7 @@ function renderRow(cls, week, entry, row) {
   });
   status.addEventListener("change", (e) => setRowStatus(cls.id, week.id, entry.id, row.id, e.target.value));
 
-  wrap.append(stamp, label, due, status);
+  wrap.append(stamp, label, due, submitted, status);
   return wrap;
 }
 
@@ -303,6 +338,17 @@ function renderEntry(cls, week, entry) {
   title.value = entry.title || "";
   title.addEventListener("change", (e) => renameEntry(cls.id, week.id, entry.id, e.target.value));
 
+  const gradeWrap = document.createElement("div");
+  gradeWrap.className = "entry-grade-wrap";
+  gradeWrap.innerHTML = `<span>Grade:</span>`;
+  const gradeInput = document.createElement("input");
+  gradeInput.type = "text";
+  gradeInput.className = "entry-grade";
+  gradeInput.placeholder = "—";
+  gradeInput.value = entry.grade || "";
+  gradeInput.addEventListener("change", (e) => updateEntryGrade(cls.id, week.id, entry.id, e.target.value));
+  gradeWrap.appendChild(gradeInput);
+
   const del = document.createElement("button");
   del.type = "button";
   del.className = "del-entry";
@@ -310,11 +356,11 @@ function renderEntry(cls, week, entry) {
   del.innerHTML = `<svg width="15" height="15" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5.5 4V2.5h3V4M3.5 4l.6 8h5.8l.6-8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   del.addEventListener("click", () => deleteEntry(cls.id, week.id, entry.id));
 
-  head.append(pill, title, del);
+  head.append(pill, title, gradeWrap, del);
 
   const rowHead = document.createElement("div");
   rowHead.className = "row-head";
-  rowHead.innerHTML = `<span></span><span>Item</span><span>Due date</span><span>Status</span>`;
+  rowHead.innerHTML = `<span></span><span>Item</span><span>Due date</span><span>Submitted</span><span>Status</span>`;
 
   const rows = document.createElement("div");
   rows.className = "rows";
@@ -369,13 +415,19 @@ function renderAddEntryControl(cls, week, container) {
 
 function renderWeek(cls, week) {
   const wrap = document.createElement("div");
-  wrap.className = "week";
+  wrap.className = "week" + (week.collapsed ? " collapsed" : "");
 
   const tabRow = document.createElement("div");
   tabRow.className = "week-tab-row";
 
   const tab = document.createElement("div");
   tab.className = "week-tab";
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "week-toggle";
+  toggle.innerHTML = `<svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M3 5l3 3 3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  toggle.addEventListener("click", () => toggleWeekCollapse(cls.id, week.id));
 
   const labelInput = document.createElement("input");
   labelInput.type = "text";
@@ -399,7 +451,7 @@ function renderWeek(cls, week) {
   delWeek.innerHTML = `<svg width="13" height="13" viewBox="0 0 14 14" fill="none"><path d="M2 4h10M5.5 4V2.5h3V4M3.5 4l.6 8h5.8l.6-8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   delWeek.addEventListener("click", () => deleteWeek(cls.id, week.id));
 
-  tab.append(labelInput, count, delWeek);
+  tab.append(toggle, labelInput, count, delWeek);
   tabRow.appendChild(tab);
 
   const body = document.createElement("div");
